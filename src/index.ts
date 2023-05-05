@@ -93,7 +93,7 @@ SB_DO_with_typeProduit.forEach((item) => {
   }
 })
 
-// Pour avoir des tableaux de la même dimension (par ex: tous les produits de SQL ne sont pas dans purgedPO)
+// --6-- Pour avoir des tableaux de la même dimension (par ex: tous les produits de SQL ne sont pas dans purgedPO)
 const filtredProductsCompleted_PO = products_Col3_col4.filter((item) => {
   const isHere = typeProduitList_OF.find((i) => {
     return i.TypeProduit === item.productLabel
@@ -109,17 +109,21 @@ const filtredTypeProduitList_OF = typeProduitList_OF.filter((item) => {
 })
 
 
-// --X-- On décompose l'algorithme pour chaque type de produit (un fichier de sortie par type de produit)
+// --7-- On décompose l'algorithme pour chaque type de produit (un fichier de sortie par type de produit)
 filtredTypeProduitList_OF.forEach((OF_item) => {
   const title = OF_item.TypeProduit
+  // On crée la partie de gauche du fichier :
+  const leftPart = filtredProductsCompleted_PO.find(
+    (p) => p.productLabel === title,
+  )
 
-  // On crée la partie droite du fichier (celle ayant pour colonne SB_DO.OF)
+  // --8-- On crée la partie droite du fichier (celle ayant pour colonne SB_DO.OF)
   const rightPart: object = {}
   const POlist = filtredProductsCompleted_PO.find(
     (i) => i.productLabel === title,
   ).FAB_MAS_PAL_NUM_PO
 
-  // On écris la ligne de titre du fichier :
+  // --9-- On écris la ligne de titre du fichier :
   let titleOutArray = `col1${separator}col2${separator}col3${separator}col4${separator}col5${separator}col6`
   const col5: number[] = new Array(POlist.length)
   for (const i in OF_item.OF) {
@@ -138,24 +142,26 @@ filtredTypeProduitList_OF.forEach((OF_item) => {
   // console.log(rightPart)
   const destinationPath = `./out/${title}.csv`
 
-  // création de la variable csvString qui sera le fichier de sortie :
+  // --10-- création de la variable csvString qui sera le fichier de sortie et on y mets le titre en dur :
   let csvString = `${titleOutArray}\n`
-  const leftPart = filtredProductsCompleted_PO.find(
-    (p) => p.productLabel === title,
-  )
+  
   for (const row in leftPart.FAB_MAS_PAL_NUM_PO) {
+    // --11-- on peut commencer à écrire la partie de gauche en dur :
     csvString += leftPart.FAB_MAS_PAL_NUM_PO[row]
     csvString += separator + leftPart.FAB_MAS_PAL_TONNAGE_MASSE[row]
     csvString += separator + leftPart.col3[row]
     csvString += separator + leftPart.col4[row]
     csvString += separator + col5[row]
     csvString += separator + (leftPart.col3[row] - col5[row])
+    
+    // --12-- la partie de droite s'écrit en dur en parcourant les colones
     for (const collumn in rightPart) {
       csvString +=
         separator + rightPart[collumn][leftPart.FAB_MAS_PAL_NUM_PO[row]]
     }
     csvString += '\n'
   }
+  // --13-- Calcul des totaux dernières lignes :
   let totalSBRow = ''
   let totalMBRow = ''
   let percentRow = ''
