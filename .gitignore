@@ -1,4 +1,4 @@
 node_modules
-out
-build
+out/*
+build/*
 .DS_Store
