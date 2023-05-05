@@ -7,6 +7,14 @@ import sumPurgedPo from './utils/sumPurgedPo'
 import * as fs from 'fs'
 import purgeDir from './utils/purgeDir'
 import getTotalMB from './utils/getTotalMB'
+
+//  ------------------------------------- ENTREE DONNEES ------------------------------------- 
+// Format date : jj/mm/aaaa
+const debut = "01/04/2023"
+const fin = "12/04/2023"
+//  ----------------------------------- FIN ENTREE DONNEES ------------------------------------- 
+
+
 setDefaultOptions({ locale: fr })
 purgeDir('./out')
 const separator = ';'
@@ -15,8 +23,8 @@ const SQL = getSQL()
 const purgedPO = getPurgedPO()
 const SB_DO = getSB_DO()
 
-const startPeriod = parse('01/04/2023', 'dd/MM/yyyy', new Date())
-const endPeriod = parse('12/04/2023', 'dd/MM/yyyy', new Date())
+const startPeriod = parse(debut, 'dd/MM/yyyy', new Date())
+const endPeriod = parse(fin, 'dd/MM/yyyy', new Date())
 
 // --1-- On crée la variable products (initialement vide) :
 const products = generateEmptyResults(SQL)
