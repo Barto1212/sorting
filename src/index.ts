@@ -4,23 +4,31 @@ import { isWithinInterval, parse, setDefaultOptions } from 'date-fns'
 import formatNumber from './utils/formatNumber'
 import generateEmptyResults from './utils/generateEmptyResults'
 import sumPurgedPo from './utils/sumPurgedPo'
+import * as fs from 'fs'
+import purgeDir from './utils/purgeDir'
+import getTotalMB from './utils/getTotalMB'
 setDefaultOptions({ locale: fr })
+purgeDir('./out')
+const separator = ';'
 
 const SQL = getSQL()
 const purgedPO = getPurgedPO()
 const SB_DO = getSB_DO()
+
+const startPeriod = parse('01/04/2023', 'dd/MM/yyyy', new Date())
+const endPeriod = parse('12/04/2023', 'dd/MM/yyyy', new Date())
+
+// --1-- On crée la variable products (initialement vide) :
 const products = generateEmptyResults(SQL)
 
-const startPeriod = parse('03/04/2023', 'dd/MM/yyyy', new Date())
-const endPeriod = parse('05/04/2023', 'dd/MM/yyyy', new Date())
-
+// --2-- On remplit la variable products avec les produits terminés sur la période selectionée :
 SQL.forEach((row) => {
   const product = products.find(
     (prod) => prod.productLabel === row.FAB_MAS_PAL_MAS_LIB_COURT,
   )
 
   // Cas théoriquement non réalisable :
-  // if (!product) return
+  if (!product) return
 
   const endDate = parse(
     row.FAB_MAS_PAL_DATE_FIN,
@@ -41,7 +49,9 @@ SQL.forEach((row) => {
   }
 })
 
-const productsCompleted_PO = products.map((product) => {
+
+// --3-- la variable products_Col3_col4
+const products_Col3_col4 = products.map((product) => {
   const col3 = product.FAB_MAS_PAL_NUM_PO.map((po) => {
     const QtePOPaletiseeKg = purgedPO.reduce((accumulator, purgedPOItem) => {
       if (po === formatNumber(purgedPOItem.PO)) {
@@ -57,6 +67,8 @@ const productsCompleted_PO = products.map((product) => {
   return { ...product, col3, col4 }
 })
 
+
+// --4-- on crée une variable SB_DO_with_typeProduit (SB_DO avec le champ TypeProduit)
 const SB_DO_with_typeProduit = SB_DO.map((SB_DO_item) => {
   const TypeProduit = purgedPO.find(
     (product) => SB_DO_item.OF === product.OF,
@@ -64,8 +76,8 @@ const SB_DO_with_typeProduit = SB_DO.map((SB_DO_item) => {
   return { ...SB_DO_item, TypeProduit }
 })
 
+// --5-- on crée la variable typeProduitList_OF qui est une liste d'OF par type de produit
 const typeProduitList_OF: { TypeProduit: string; OF: string[] }[] = []
-
 SB_DO_with_typeProduit.forEach((item) => {
   const { OF, TypeProduit } = item
   if (!TypeProduit) return
@@ -81,35 +93,93 @@ SB_DO_with_typeProduit.forEach((item) => {
   }
 })
 
-// Pour avoir des tableaux de la même dimension (tous les produits de SQL ne sont pas dans purgedPO)
-const filtredProductsCompleted_PO = productsCompleted_PO.filter((item) => {
+// Pour avoir des tableaux de la même dimension (par ex: tous les produits de SQL ne sont pas dans purgedPO)
+const filtredProductsCompleted_PO = products_Col3_col4.filter((item) => {
   const isHere = typeProduitList_OF.find((i) => {
-    // console.log(i.TypeProduit,item.productLabel)
     return i.TypeProduit === item.productLabel
   })
   return !!isHere
 })
 
 const filtredTypeProduitList_OF = typeProduitList_OF.filter((item) => {
-  const isHere = productsCompleted_PO.find((i) => {
-    // console.log(i.productLabel,item.TypeProduit)
+  const isHere = products_Col3_col4.find((i) => {
     return i.productLabel === item.TypeProduit
   })
   return !!isHere
 })
 
-// console.log(filtredProductsCompleted_PO.length)
-// console.log(filtredTypeProduitList_OF.length)
-const coll5: number[] = []
+
+// --X-- On décompose l'algorithme pour chaque type de produit (un fichier de sortie par type de produit)
 filtredTypeProduitList_OF.forEach((OF_item) => {
   const title = OF_item.TypeProduit
-  const POlist = filtredProductsCompleted_PO.find((i) => i.productLabel === title).FAB_MAS_PAL_NUM_PO
-  OF_item.OF.forEach((OF) => {
-    POlist.forEach(PO => {
 
+  // On crée la partie droite du fichier (celle ayant pour colonne SB_DO.OF)
+  const rightPart: object = {}
+  const POlist = filtredProductsCompleted_PO.find(
+    (i) => i.productLabel === title,
+  ).FAB_MAS_PAL_NUM_PO
+
+  // On écris la ligne de titre du fichier :
+  let titleOutArray = `col1${separator}col2${separator}col3${separator}col4${separator}col5${separator}col6`
+  const col5: number[] = new Array(POlist.length)
+  for (const i in OF_item.OF) {
+    const OF = OF_item.OF[i]
+    titleOutArray = titleOutArray + separator + OF
+    rightPart[OF] = {}
+    for (const row in POlist) {
+      const PO = POlist[row]
       const sum = sumPurgedPo(purgedPO, OF, PO)
-      console.log(sum)
-      
-    })
+      col5[row] = col5[row] ? col5[row] + sum : sum
+      rightPart[OF][PO] = sum
+    }
+  }
+  // console.log(`--------------------------${title}--------------------------`)
+  // console.log(filtredProductsCompleted_PO.find((p) => p.productLabel === title))
+  // console.log(rightPart)
+  const destinationPath = `./out/${title}.csv`
+
+  // création de la variable csvString qui sera le fichier de sortie :
+  let csvString = `${titleOutArray}\n`
+  const leftPart = filtredProductsCompleted_PO.find(
+    (p) => p.productLabel === title,
+  )
+  for (const row in leftPart.FAB_MAS_PAL_NUM_PO) {
+    csvString += leftPart.FAB_MAS_PAL_NUM_PO[row]
+    csvString += separator + leftPart.FAB_MAS_PAL_TONNAGE_MASSE[row]
+    csvString += separator + leftPart.col3[row]
+    csvString += separator + leftPart.col4[row]
+    csvString += separator + col5[row]
+    csvString += separator + (leftPart.col3[row] - col5[row])
+    for (const collumn in rightPart) {
+      csvString +=
+        separator + rightPart[collumn][leftPart.FAB_MAS_PAL_NUM_PO[row]]
+    }
+    csvString += '\n'
+  }
+  let totalSBRow = ''
+  let totalMBRow = ''
+  let percentRow = ''
+  ;[1, 2, 3, 4, 5].forEach(() => {
+    totalSBRow += separator
+    totalMBRow += separator
+    percentRow += separator
   })
+  totalSBRow += 'Total SB'
+  totalMBRow += 'Total MB'
+  percentRow += '%'
+  for (const collumn in rightPart) {
+    let totalSB = 0
+    for (const row in rightPart[collumn]) {
+      totalSB += rightPart[collumn][row]
+    }
+    const totalMB = getTotalMB(purgedPO, collumn)
+    // Atention inverse dans la consigne
+    const percent = Math.round((totalSB / totalMB) * 100)
+    totalSBRow += separator + totalSB
+    totalMBRow += separator + totalMB
+    percentRow += separator + percent
+  }
+  csvString += totalSBRow + '\n' + totalMBRow + '\n' + percentRow
+
+  fs.writeFileSync(destinationPath, csvString)
 })

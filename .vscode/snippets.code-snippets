@@ -15,6 +15,18 @@
   // 	],
   // 	"description": "Log output to console"
   // }
+  "New ts function": {
+    "scope": "typescript",
+    "prefix": "tc",
+    "body": [
+      "const ${1:$TM_FILENAME_BASE} = (${2:props}) => {",
+      "  ${3}",
+      "}",
+      "",
+      "export default ${1:$TM_FILENAME_BASE}"
+    ],
+    "description": "New typescript function default export"
+  },
   "New jsx": {
     "scope": "javascriptreact",
     "prefix": "rc",
