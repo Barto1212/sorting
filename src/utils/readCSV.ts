@@ -37,6 +37,7 @@ export type SQLTitles =
   | 'FAB_MAS_PAL_TONNAGE_GLOBAL_SANS_FRUIT'
   | 'FAB_MAS_PAL_TONNAGE_GLOBAL_AVEC_FRUIT'
 
+// Permet de transformer le csv en variable. A faire: créer une classe pour permettre le réemploi
 export const getPurgedPO = () => {
   const data = fs.readFileSync('./in/purgedPO.csv', 'utf8')
   const rows = data.split('\n')

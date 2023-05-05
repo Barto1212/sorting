@@ -49,9 +49,8 @@ SQL.forEach((row) => {
   }
 })
 
-
-// --3-- la variable products_Col3_col4
-const products_Col3_col4 = products.map((product) => {
+// --3-- la variable products_Col3_Col4 est une copie de product avec col3 et col4 en plus
+const products_Col3_Col4 = products.map((product) => {
   const col3 = product.FAB_MAS_PAL_NUM_PO.map((po) => {
     const QtePOPaletiseeKg = purgedPO.reduce((accumulator, purgedPOItem) => {
       if (po === formatNumber(purgedPOItem.PO)) {
@@ -66,7 +65,6 @@ const products_Col3_col4 = products.map((product) => {
   )
   return { ...product, col3, col4 }
 })
-
 
 // --4-- on crée une variable SB_DO_with_typeProduit (SB_DO avec le champ TypeProduit)
 const SB_DO_with_typeProduit = SB_DO.map((SB_DO_item) => {
@@ -94,7 +92,7 @@ SB_DO_with_typeProduit.forEach((item) => {
 })
 
 // --6-- Pour avoir des tableaux de la même dimension (par ex: tous les produits de SQL ne sont pas dans purgedPO)
-const filtredProductsCompleted_PO = products_Col3_col4.filter((item) => {
+const filtredProductsCompleted_PO = products_Col3_Col4.filter((item) => {
   const isHere = typeProduitList_OF.find((i) => {
     return i.TypeProduit === item.productLabel
   })
@@ -102,12 +100,11 @@ const filtredProductsCompleted_PO = products_Col3_col4.filter((item) => {
 })
 
 const filtredTypeProduitList_OF = typeProduitList_OF.filter((item) => {
-  const isHere = products_Col3_col4.find((i) => {
+  const isHere = products_Col3_Col4.find((i) => {
     return i.productLabel === item.TypeProduit
   })
   return !!isHere
 })
-
 
 // --7-- On décompose l'algorithme pour chaque type de produit (un fichier de sortie par type de produit)
 filtredTypeProduitList_OF.forEach((OF_item) => {
@@ -137,14 +134,11 @@ filtredTypeProduitList_OF.forEach((OF_item) => {
       rightPart[OF][PO] = sum
     }
   }
-  // console.log(`--------------------------${title}--------------------------`)
-  // console.log(filtredProductsCompleted_PO.find((p) => p.productLabel === title))
-  // console.log(rightPart)
   const destinationPath = `./out/${title}.csv`
 
   // --10-- création de la variable csvString qui sera le fichier de sortie et on y mets le titre en dur :
   let csvString = `${titleOutArray}\n`
-  
+
   for (const row in leftPart.FAB_MAS_PAL_NUM_PO) {
     // --11-- on peut commencer à écrire la partie de gauche en dur :
     csvString += leftPart.FAB_MAS_PAL_NUM_PO[row]
@@ -153,15 +147,15 @@ filtredTypeProduitList_OF.forEach((OF_item) => {
     csvString += separator + leftPart.col4[row]
     csvString += separator + col5[row]
     csvString += separator + (leftPart.col3[row] - col5[row])
-    
-    // --12-- la partie de droite s'écrit en dur en parcourant les colones
+
+    // --12-- chaque ligne de la partie de droite s'écrit case par cas (donc en parcourant les colonnes)
     for (const collumn in rightPart) {
       csvString +=
         separator + rightPart[collumn][leftPart.FAB_MAS_PAL_NUM_PO[row]]
     }
     csvString += '\n'
   }
-  // --13-- Calcul des totaux dernières lignes :
+  // --13-- Calcul des totaux (les 3 dernières lignes) :
   let totalSBRow = ''
   let totalMBRow = ''
   let percentRow = ''
@@ -179,7 +173,7 @@ filtredTypeProduitList_OF.forEach((OF_item) => {
       totalSB += rightPart[collumn][row]
     }
     const totalMB = getTotalMB(purgedPO, collumn)
-    // Atention inverse dans la consigne
+    // Atention inverse dans la consigne pour le calcul du pourcentage
     const percent = Math.round((totalSB / totalMB) * 100)
     totalSBRow += separator + totalSB
     totalMBRow += separator + totalMB
